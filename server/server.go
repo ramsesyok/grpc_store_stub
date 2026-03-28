@@ -1,7 +1,9 @@
+// server.go は SimulationService の gRPC 実装です。
+// proto 型と演算層（simulation.go）のデータ型を相互変換し、
+// ストリームへの送信を担当します。
 package main
 
 import (
-	"math"
 	"time"
 
 	simpb "github.com/ramsesyok/grpc-store-stub/gen/simulation"
@@ -15,7 +17,7 @@ type simServer struct {
 }
 
 // RunSimulation は SimulationService の server streaming RPC 実装です。
-// リクエストで指定された条件に従ってシミュレーションを実行し、
+// proto リクエストを演算層の型へ変換してシミュレーションを実行し、
 // bulkSize ステップごとにまとめてクライアントへストリーム送信します。
 // 最後のチャンクでは IsFinal = true を設定します。
 func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.SimulationService_RunSimulationServer) error {
@@ -37,13 +39,21 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 	// 演算が軽すぎて送信が高速になりすぎる場合に速度を調整する目的で使用する
 	waitDur := time.Duration(float64(time.Second) * req.GetWait())
 
-	area := req.GetArea()
+	// proto の Area メッセージを演算層の simulationArea へ変換する
+	protoArea := req.GetArea()
+	area := simulationArea{
+		xMin: protoArea.GetXMin(),
+		xMax: protoArea.GetXMax(),
+		yMin: protoArea.GetYMin(),
+		yMax: protoArea.GetYMax(),
+	}
+
 	rangeReq := req.GetRange()
 	start := rangeReq.GetStart()
 	end := rangeReq.GetEnd()
 
-	// リクエストの objects を内部状態 objectState のスライスへコピーする
-	// シミュレーション中はこの状態を直接更新していく
+	// proto の SimObject スライスを演算層の objectState スライスへ変換する
+	// シミュレーション中はこの状態を step() で直接更新していく
 	states := make([]objectState, 0, len(req.GetObjects()))
 	for _, o := range req.GetObjects() {
 		states = append(states, objectState{
@@ -63,20 +73,12 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 
 	// t はシミュレーション上の現在時刻（秒）。interval ずつ進める
 	for t := start; t < end; t += interval {
-		// --- 1 ステップ分の全オブジェクト位置更新 ---
+		// 演算層の step() で全オブジェクトを1ステップ分進める
+		step(states, area, interval)
+
+		// 更新後の objectState スライスを proto の SimAttribute スライスへ変換する
 		attrs := make([]*simpb.SimAttribute, 0, len(states))
-		for i := range states {
-			st := &states[i]
-
-			// direction（度数法）をラジアンへ変換して x, y を更新
-			rad := st.direction * math.Pi / 180.0
-			st.x += st.speed * math.Cos(rad) * interval
-			st.y += st.speed * math.Sin(rad) * interval
-
-			// エリア境界に達した場合は反射させる（x, y それぞれ独立）
-			st.x, st.direction = reflect(st.x, area.GetXMin(), area.GetXMax(), st.direction)
-			st.y, st.direction = reflect(st.y, area.GetYMin(), area.GetYMax(), st.direction)
-
+		for _, st := range states {
 			attrs = append(attrs, &simpb.SimAttribute{
 				Id:        st.id,
 				X:         st.x,
