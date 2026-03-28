@@ -1,80 +1,189 @@
+// simulation.proto
+// SimulationService の gRPC インタフェース定義です。
+// 等速直線運動するオブジェクト群のシミュレーション結果を
+// server streaming で返します。
+
 syntax = "proto3";
 
 package simulation;
 
 option go_package = "github.com/ramsesyok/grpc-store-stub/gen/simulation";
 
-// --- Request ---
+// ============================================================
+// リクエスト
+// ============================================================
 
+// SimulationRequest はシミュレーションの実行条件を指定するリクエストです。
 message SimulationRequest {
+  // シミュレーション対象のオブジェクト一覧。
+  // 数を変えることでレスポンスのデータ量を調整できます。
   repeated SimObject objects = 1;
-  Area               area    = 2;
-  Range              range   = 3;
-  double             interval  = 4;
-  int32              bulk_size = 5;
-  double             wait      = 6;
+
+  // オブジェクトが移動するエリアの範囲。
+  // オブジェクトがエリア境界に達すると反射します。
+  Area area = 2;
+
+  // シミュレーション時間の開始・終了（秒）。
+  // この範囲内のステップ結果がレスポンスとして返されます。
+  Range range = 3;
+
+  // シミュレーションの計算間隔（秒）。
+  // 実時間ではなくシミュレーション上の時間であるため、
+  // 実際の処理速度に関係なく進みます。
+  double interval = 4;
+
+  // 1 回のストリーム送信にまとめるステップ数。
+  // interval=1 かつ bulk_size=100 の場合、
+  // シミュレーション時間 100 秒ぶんをまとめて 1 チャンクとして送信します。
+  int32 bulk_size = 5;
+
+  // チャンク送信間のスリープ時間（秒）。
+  // 演算が軽く送信が高速になりすぎる場合に速度を調整するために使います。
+  // 演算に十分な処理時間がかかる場合は 0 のまま運用します。
+  double wait = 6;
 }
 
+// SimObject はシミュレーション対象オブジェクトの初期状態です。
 message SimObject {
-  int32  id        = 1;
-  double x         = 2;
-  double y         = 3;
-  double z         = 4;
+  // オブジェクトの識別子。
+  int32 id = 1;
+
+  // 初期位置 x（エリアの x 軸方向）。
+  double x = 2;
+
+  // 初期位置 y（エリアの y 軸方向）。
+  double y = 3;
+
+  // 初期位置 z。演算には使用せず、データ量調整のためにレスポンスへパススルーします。
+  double z = 4;
+
+  // 進行方向（度数法、0〜360）。
   double direction = 5;
-  double speed     = 6;
+
+  // 移動速度（単位距離 / シミュレーション秒）。
+  double speed = 6;
 }
 
+// Area はオブジェクトが移動できるエリアの範囲です。
+// 長時間動作させても数値が範囲外に発散しないよう、
+// 境界に達したオブジェクトは反射します。
 message Area {
+  // エリアの x 軸方向の最小値。
   double x_min = 1;
+
+  // エリアの x 軸方向の最大値。
   double x_max = 2;
+
+  // エリアの y 軸方向の最小値。
   double y_min = 3;
+
+  // エリアの y 軸方向の最大値。
   double y_max = 4;
 }
 
+// Range はシミュレーション時間の範囲（秒）です。
+// リクエストでは実行区間、レスポンスでは各チャンクが表す区間を示します。
 message Range {
+  // 開始時刻（秒）。
   double start = 1;
-  double end   = 2;
+
+  // 終了時刻（秒）。
+  double end = 2;
 }
 
-// --- Response ---
+// ============================================================
+// レスポンス
+// ============================================================
 
+// SimulationResponse は server streaming で返される1チャンクのレスポンスです。
+// bulk_size ステップごとにまとめて送信されます。
 message SimulationResponse {
-  repeated SimItem items      = 1;
-  int32            item_count = 2;
-  Range            range      = 3;
-  bool             is_final   = 4;
+  // このチャンクに含まれるシミュレーション結果の一覧。
+  repeated SimItem items = 1;
+
+  // items の件数（= len(items)）。
+  int32 item_count = 2;
+
+  // このチャンクが表すシミュレーション時間の範囲（秒）。
+  Range range = 3;
+
+  // これが最後のチャンクであるかどうかのフラグ。
+  // true のとき、ストリームはこのチャンクで終了します。
+  bool is_final = 4;
 }
 
+// SimItem は1ステップぶんのシミュレーション結果です。
 message SimItem {
-  double              timestamp  = 1;
+  // このステップのシミュレーション時刻（秒）。ステップ終了時刻を示します。
+  double timestamp = 1;
+
+  // このステップにおける各オブジェクトの状態一覧。
   repeated SimAttribute attributes = 2;
-  repeated SimEvent   events     = 3;
+
+  // このステップで発生したイベントの一覧。
+  // 現時点では送信されません（空リスト固定）。
+  repeated SimEvent events = 3;
 }
 
+// SimAttribute は1ステップ後のオブジェクトの状態です。
 message SimAttribute {
-  int32  id        = 1;
-  double x         = 2;
-  double y         = 3;
-  double z         = 4;
+  // オブジェクトの識別子。
+  int32 id = 1;
+
+  // 更新後の位置 x。
+  double x = 2;
+
+  // 更新後の位置 y。
+  double y = 3;
+
+  // 位置 z。演算には使用せず、リクエストの値をそのまま返します。
+  double z = 4;
+
+  // 更新後の進行方向（度数法）。反射が発生した場合は変化します。
   double direction = 5;
-  double speed     = 6;
+
+  // 移動速度。シミュレーション中は変化しません。
+  double speed = 6;
 }
 
+// SimEvent はシミュレーション中に発生したイベントを表します。
+// 受信側では type をキーに言語ファイルからメッセージテンプレートを引き、
+// args のプレースホルダを置換してメッセージを組み立てます。
+// 例: type="m0001", args={"name":"Jane","age":17} →
+//     言語ファイル "m0001": "Hello, {name}. I am {age} years old."
+//     → "Hello, Jane. I am 17 years old."
 message SimEvent {
-  string                   type = 1;
-  map<string, MessageArg>  args = 2;
+  // メッセージ種別を示すキー（言語ファイルのキーに対応）。
+  string type = 1;
+
+  // メッセージテンプレートのプレースホルダに渡す引数。
+  // 値の型が int64 / double / string のいずれかになるため MessageArg で表現します。
+  map<string, MessageArg> args = 2;
 }
 
+// MessageArg は SimEvent の引数値です。
+// int64 / double / string の3種類を oneof で表現します。
 message MessageArg {
   oneof kind {
-    int64  int_value    = 1;
+    // 整数値。
+    int64 int_value = 1;
+
+    // 浮動小数点数値。
     double double_value = 2;
+
+    // 文字列値。
     string string_value = 3;
   }
 }
 
-// --- Service ---
+// ============================================================
+// サービス
+// ============================================================
 
+// SimulationService はシミュレーション実行の gRPC サービスです。
 service SimulationService {
+  // RunSimulation はシミュレーションを実行し、結果を server streaming で返します。
+  // bulk_size ステップごとにチャンクをストリーム送信し、
+  // 最後のチャンクで is_final = true を設定してストリームを終了します。
   rpc RunSimulation(SimulationRequest) returns (stream SimulationResponse);
 }
