@@ -1,0 +1,33 @@
+{
+    "items": [
+        {
+            "timestamp": 10.0,
+            "attributes": [
+                {
+                    "id": 0,
+                    "x": 10.0,
+                    "y": 20.0,
+                    "z": 30.0,
+                    "direction": 45.0,
+                    "speed": 5.0
+                }
+            ],
+            "events": [
+                {
+                    "type": "m001",
+                    "args": {
+                        "value": 2,
+                        "duration": 3.0,
+                        "name": "event1"
+                    }
+                }
+            ]
+        }
+    ],
+    "itemCount": 1,
+    "range": {
+        "start": 0,
+        "end": 20
+    },
+    "isFinal": false
+}

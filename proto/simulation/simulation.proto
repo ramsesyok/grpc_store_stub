@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package simulation;
+
+option go_package = "github.com/ramsesyok/grpc-store-stub/gen/simulation";
+
+// --- Request ---
+
+message SimulationRequest {
+  repeated SimObject objects = 1;
+  Area               area    = 2;
+  Range              range   = 3;
+  double             interval  = 4;
+  int32              bulk_size = 5;
+  double             wait      = 6;
+}
+
+message SimObject {
+  int32  id        = 1;
+  double x         = 2;
+  double y         = 3;
+  double z         = 4;
+  double direction = 5;
+  double speed     = 6;
+}
+
+message Area {
+  double x_min = 1;
+  double x_max = 2;
+  double y_min = 3;
+  double y_max = 4;
+}
+
+message Range {
+  double start = 1;
+  double end   = 2;
+}
+
+// --- Response ---
+
+message SimulationResponse {
+  repeated SimItem items      = 1;
+  int32            item_count = 2;
+  Range            range      = 3;
+  bool             is_final   = 4;
+}
+
+message SimItem {
+  double              timestamp  = 1;
+  repeated SimAttribute attributes = 2;
+  repeated SimEvent   events     = 3;
+}
+
+message SimAttribute {
+  int32  id        = 1;
+  double x         = 2;
+  double y         = 3;
+  double z         = 4;
+  double direction = 5;
+  double speed     = 6;
+}
+
+message SimEvent {
+  string                   type = 1;
+  map<string, MessageArg>  args = 2;
+}
+
+message MessageArg {
+  oneof kind {
+    int64  int_value    = 1;
+    double double_value = 2;
+    string string_value = 3;
+  }
+}
+
+// --- Service ---
+
+service SimulationService {
+  rpc RunSimulation(SimulationRequest) returns (stream SimulationResponse);
+}
