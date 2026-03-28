@@ -18,7 +18,7 @@ type simServer struct {
 
 // RunSimulation は SimulationService の server streaming RPC 実装です。
 // proto リクエストを演算層の型へ変換してシミュレーションを実行し、
-// bulkSize ステップごとにまとめてクライアントへストリーム送信します。
+// bulkInterval シミュレーション秒ごとにまとめてクライアントへストリーム送信します。
 // 最後のチャンクでは IsFinal = true を設定します。
 func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.SimulationService_RunSimulationServer) error {
 	// interval: シミュレーションの1ステップあたりの時間（秒）
@@ -28,11 +28,11 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 		interval = 1.0
 	}
 
-	// bulkSize: 1 回のストリーム送信にまとめるステップ数
-	// 0 以下の場合は最低 1 に補正する
-	bulkSize := int(req.GetBulkSize())
-	if bulkSize <= 0 {
-		bulkSize = 1
+	// bulkInterval: 1 回のストリーム送信にまとめるシミュレーション時間の長さ（秒）
+	// 0 以下の場合は interval と同じ（1 ステップごとに送信）とする
+	bulkInterval := req.GetBulkInterval()
+	if bulkInterval <= 0 {
+		bulkInterval = interval
 	}
 
 	// waitDur: 各チャンク送信後に挿入するスリープ時間
@@ -67,9 +67,11 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 	}
 
 	// items は次の送信タイミングまで蓄積する SimItem のバッファ
-	items := make([]*simpb.SimItem, 0, bulkSize)
-	// chunkStart は現在送信中チャンクの開始タイムスタンプ
+	items := make([]*simpb.SimItem, 0)
+	// chunkStart は現在送信中チャンクの開始タイムスタンプ（シミュレーション秒）
 	chunkStart := start
+	// chunkEnd は次の送信タイムスタンプ（chunkStart + bulkInterval）
+	chunkEnd := chunkStart + bulkInterval
 
 	// t はシミュレーション上の現在時刻（秒）。interval ずつ進める
 	for t := start; t < end; t += interval {
@@ -98,15 +100,14 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			Events:     []*simpb.SimEvent{},
 		})
 
-		// bulkSize 分のステップが蓄積されたらストリームへ送信する
-		if len(items) >= bulkSize {
-			chunkEnd := t + interval
-			// このチャンクがシミュレーション終端に達したか判定
-			isFinal := chunkEnd >= end
+		// ステップ終了時刻が chunkEnd に達したらストリームへ送信する
+		stepEnd := t + interval
+		if stepEnd >= chunkEnd {
+			isFinal := stepEnd >= end
 			resp := &simpb.SimulationResponse{
 				Items:     items,
 				ItemCount: int32(len(items)),
-				Range:     &simpb.Range{Start: chunkStart, End: chunkEnd},
+				Range:     &simpb.Range{Start: chunkStart, End: stepEnd},
 				IsFinal:   isFinal,
 			}
 			if err := stream.Send(resp); err != nil {
@@ -116,16 +117,17 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			if waitDur > 0 {
 				time.Sleep(waitDur)
 			}
-			// 次チャンクの開始タイムスタンプを更新してバッファをリセット
-			chunkStart = chunkEnd
-			items = make([]*simpb.SimItem, 0, bulkSize)
+			// 次チャンクの範囲へ更新してバッファをリセット
+			chunkStart = stepEnd
+			chunkEnd = chunkStart + bulkInterval
+			items = make([]*simpb.SimItem, 0)
 			if isFinal {
 				return nil
 			}
 		}
 	}
 
-	// ループ終了後、bulkSize に満たない残りのアイテムをまとめて送信する
+	// ループ終了後、bulkInterval に満たない残りのアイテムをまとめて送信する
 	// このチャンクが必ず最後になるため IsFinal = true を設定する
 	if len(items) > 0 {
 		resp := &simpb.SimulationResponse{
