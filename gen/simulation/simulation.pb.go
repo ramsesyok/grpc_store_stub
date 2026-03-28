@@ -42,10 +42,11 @@ type SimulationRequest struct {
 	// 実時間ではなくシミュレーション上の時間であるため、
 	// 実際の処理速度に関係なく進みます。
 	Interval float64 `protobuf:"fixed64,4,opt,name=interval,proto3" json:"interval,omitempty"`
-	// 1 回のストリーム送信にまとめるステップ数。
-	// interval=1 かつ bulk_size=100 の場合、
-	// シミュレーション時間 100 秒ぶんをまとめて 1 チャンクとして送信します。
-	BulkSize int32 `protobuf:"varint,5,opt,name=bulk_size,json=bulkSize,proto3" json:"bulk_size,omitempty"`
+	// 1 回のストリーム送信にまとめるシミュレーション時間の長さ（秒）。
+	// bulk_interval=100 の場合、シミュレーション時間 100 秒ぶんをまとめて 1 チャンクとして送信します。
+	// interval=1 かつ bulk_interval=100 なら 100 ステップごと、
+	// interval=0.5 かつ bulk_interval=100 なら 200 ステップごとに送信します。
+	BulkInterval float64 `protobuf:"fixed64,5,opt,name=bulk_interval,json=bulkInterval,proto3" json:"bulk_interval,omitempty"`
 	// チャンク送信間のスリープ時間（秒）。
 	// 演算が軽く送信が高速になりすぎる場合に速度を調整するために使います。
 	// 演算に十分な処理時間がかかる場合は 0 のまま運用します。
@@ -112,9 +113,9 @@ func (x *SimulationRequest) GetInterval() float64 {
 	return 0
 }
 
-func (x *SimulationRequest) GetBulkSize() int32 {
+func (x *SimulationRequest) GetBulkInterval() float64 {
 	if x != nil {
-		return x.BulkSize
+		return x.BulkInterval
 	}
 	return 0
 }
@@ -749,13 +750,13 @@ var File_simulation_simulation_proto protoreflect.FileDescriptor
 const file_simulation_simulation_proto_rawDesc = "" +
 	"\n" +
 	"\x1bsimulation/simulation.proto\x12\n" +
-	"simulation\"\xe0\x01\n" +
+	"simulation\"\xe8\x01\n" +
 	"\x11SimulationRequest\x12/\n" +
 	"\aobjects\x18\x01 \x03(\v2\x15.simulation.SimObjectR\aobjects\x12$\n" +
 	"\x04area\x18\x02 \x01(\v2\x10.simulation.AreaR\x04area\x12'\n" +
 	"\x05range\x18\x03 \x01(\v2\x11.simulation.RangeR\x05range\x12\x1a\n" +
-	"\binterval\x18\x04 \x01(\x01R\binterval\x12\x1b\n" +
-	"\tbulk_size\x18\x05 \x01(\x05R\bbulkSize\x12\x12\n" +
+	"\binterval\x18\x04 \x01(\x01R\binterval\x12#\n" +
+	"\rbulk_interval\x18\x05 \x01(\x01R\fbulkInterval\x12\x12\n" +
 	"\x04wait\x18\x06 \x01(\x01R\x04wait\"y\n" +
 	"\tSimObject\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\x05R\x02id\x12\f\n" +

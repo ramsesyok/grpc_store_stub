@@ -105,7 +105,7 @@ make run-server
 | `--range-start` | | `0` | シミュレーション開始時刻（秒）|
 | `--range-end` | | `1000` | シミュレーション終了時刻（秒）|
 | `--interval` | `-t` | `1.0` | 計算間隔（秒）|
-| `--bulk-size` | `-b` | `100` | 1 チャンクあたりのアイテム数 |
+| `--bulk-interval` | `-b` | `100` | 1 チャンクあたりのシミュレーション時間の長さ（秒）|
 | `--wait` | `-w` | `0.5` | チャンク間のスリープ時間（秒）|
 
 ```bash
@@ -176,7 +176,7 @@ service SimulationService {
 | `area` | `Area` | 移動エリアの範囲（x_min/x_max/y_min/y_max）|
 | `range` | `Range` | シミュレーション時間の開始・終了（秒）|
 | `interval` | `double` | 計算間隔（秒）。実時間ではなくシミュレーション上の時間 |
-| `bulk_size` | `int32` | 1 チャンクあたりのステップ数 |
+| `bulk_interval` | `double` | 1 チャンクあたりのシミュレーション時間の長さ（秒）|
 | `wait` | `double` | チャンク送信間のスリープ時間（秒）|
 
 `SimObject` のフィールド: `id`, `x`, `y`, `z`, `direction`（度数法）, `speed`
@@ -192,12 +192,14 @@ service SimulationService {
 
 `SimItem` のフィールド: `timestamp`, `attributes`（各オブジェクトの状態）, `events`（現時点は空）
 
-### `bulk_size` と `interval` の関係
+### `bulk_interval` と `interval` の関係
 
 ```
-interval=1, bulk_size=100 の場合:
-  シミュレーション時間 100 秒ぶんを 1 チャンクとして送信
+bulk_interval=100 の場合、シミュレーション時間 100 秒ごとに 1 チャンクを送信:
   range=[0,100], range=[100,200], ... という順に届く
+
+interval=1,   bulk_interval=100 → 100 ステップで 1 チャンク (itemCount=100)
+interval=0.5, bulk_interval=100 → 200 ステップで 1 チャンク (itemCount=200)
 ```
 
 ### `events` と `MessageArg`
