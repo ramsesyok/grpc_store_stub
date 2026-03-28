@@ -21,19 +21,34 @@ type simulationArea struct {
 	yMin, yMax float64
 }
 
-// reflect はオブジェクトがエリア境界に達したときの反射処理を行います。
-// pos が [min, max] の範囲を超えた場合、境界で折り返し、
-// dir = π - dir で速度の軸成分を反転させます。
+// reflectX はオブジェクトが X 軸方向の境界（垂直壁）に達したときの反射処理です。
+// 垂直壁では x 成分の速度のみが反転するため、新方向 = 180° - dir となります。
 // 戻り値は補正後の位置と方向（度数法）です。
-func reflect(pos, min, max, dir float64) (float64, float64) {
+func reflectX(pos, min, max, dir float64) (float64, float64) {
 	if pos < min {
 		// 下限を下回った場合：はみ出た分だけ min から折り返す
 		pos = min + (min - pos)
-		dir = math.Pi - dir
+		dir = 180.0 - dir
 	} else if pos > max {
 		// 上限を超えた場合：はみ出た分だけ max から折り返す
 		pos = max - (pos - max)
-		dir = math.Pi - dir
+		dir = 180.0 - dir
+	}
+	return pos, dir
+}
+
+// reflectY はオブジェクトが Y 軸方向の境界（水平壁）に達したときの反射処理です。
+// 水平壁では y 成分の速度のみが反転するため、新方向 = -dir となります。
+// 戻り値は補正後の位置と方向（度数法）です。
+func reflectY(pos, min, max, dir float64) (float64, float64) {
+	if pos < min {
+		// 下限を下回った場合：はみ出た分だけ min から折り返す
+		pos = min + (min - pos)
+		dir = -dir
+	} else if pos > max {
+		// 上限を超えた場合：はみ出た分だけ max から折り返す
+		pos = max - (pos - max)
+		dir = -dir
 	}
 	return pos, dir
 }
@@ -50,8 +65,9 @@ func step(states []objectState, area simulationArea, interval float64) {
 		st.x += st.speed * math.Cos(rad) * interval
 		st.y += st.speed * math.Sin(rad) * interval
 
-		// エリア境界に達した場合は反射させる（x, y それぞれ独立）
-		st.x, st.direction = reflect(st.x, area.xMin, area.xMax, st.direction)
-		st.y, st.direction = reflect(st.y, area.yMin, area.yMax, st.direction)
+		// X 境界（垂直壁）: x 成分のみ反転 → new_dir = 180° - dir
+		st.x, st.direction = reflectX(st.x, area.xMin, area.xMax, st.direction)
+		// Y 境界（水平壁）: y 成分のみ反転 → new_dir = -dir
+		st.y, st.direction = reflectY(st.y, area.yMin, area.yMax, st.direction)
 	}
 }
