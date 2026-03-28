@@ -130,7 +130,8 @@ func (x *SimulationRequest) GetWait() float64 {
 type SimObject struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// オブジェクトの識別子。
-	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// optional にすることで id=0 が「未設定」と区別され、JSON 出力時に省略されなくなります。
+	Id *int32 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
 	// 初期位置 x（エリアの x 軸方向）。
 	X float64 `protobuf:"fixed64,2,opt,name=x,proto3" json:"x,omitempty"`
 	// 初期位置 y（エリアの y 軸方向）。
@@ -176,8 +177,8 @@ func (*SimObject) Descriptor() ([]byte, []int) {
 }
 
 func (x *SimObject) GetId() int32 {
-	if x != nil {
-		return x.Id
+	if x != nil && x.Id != nil {
+		return *x.Id
 	}
 	return 0
 }
@@ -492,7 +493,8 @@ func (x *SimItem) GetEvents() []*SimEvent {
 type SimAttribute struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// オブジェクトの識別子。
-	Id int32 `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	// optional にすることで id=0 が「未設定」と区別され、JSON 出力時に省略されなくなります。
+	Id *int32 `protobuf:"varint,1,opt,name=id,proto3,oneof" json:"id,omitempty"`
 	// 更新後の位置 x。
 	X float64 `protobuf:"fixed64,2,opt,name=x,proto3" json:"x,omitempty"`
 	// 更新後の位置 y。
@@ -538,8 +540,8 @@ func (*SimAttribute) Descriptor() ([]byte, []int) {
 }
 
 func (x *SimAttribute) GetId() int32 {
-	if x != nil {
-		return x.Id
+	if x != nil && x.Id != nil {
+		return *x.Id
 	}
 	return 0
 }
@@ -756,14 +758,15 @@ const file_simulation_simulation_proto_rawDesc = "" +
 	"\x05range\x18\x03 \x01(\v2\x11.simulation.RangeR\x05range\x12\x1a\n" +
 	"\binterval\x18\x04 \x01(\x01R\binterval\x12\x1b\n" +
 	"\tbulk_size\x18\x05 \x01(\x05R\bbulkSize\x12\x12\n" +
-	"\x04wait\x18\x06 \x01(\x01R\x04wait\"y\n" +
-	"\tSimObject\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\f\n" +
+	"\x04wait\x18\x06 \x01(\x01R\x04wait\"\x85\x01\n" +
+	"\tSimObject\x12\x13\n" +
+	"\x02id\x18\x01 \x01(\x05H\x00R\x02id\x88\x01\x01\x12\f\n" +
 	"\x01x\x18\x02 \x01(\x01R\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\x01R\x01y\x12\f\n" +
 	"\x01z\x18\x04 \x01(\x01R\x01z\x12\x1c\n" +
 	"\tdirection\x18\x05 \x01(\x01R\tdirection\x12\x14\n" +
-	"\x05speed\x18\x06 \x01(\x01R\x05speed\"Z\n" +
+	"\x05speed\x18\x06 \x01(\x01R\x05speedB\x05\n" +
+	"\x03_id\"Z\n" +
 	"\x04Area\x12\x13\n" +
 	"\x05x_min\x18\x01 \x01(\x01R\x04xMin\x12\x13\n" +
 	"\x05x_max\x18\x02 \x01(\x01R\x04xMax\x12\x13\n" +
@@ -783,14 +786,15 @@ const file_simulation_simulation_proto_rawDesc = "" +
 	"\n" +
 	"attributes\x18\x02 \x03(\v2\x18.simulation.SimAttributeR\n" +
 	"attributes\x12,\n" +
-	"\x06events\x18\x03 \x03(\v2\x14.simulation.SimEventR\x06events\"|\n" +
-	"\fSimAttribute\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\x05R\x02id\x12\f\n" +
+	"\x06events\x18\x03 \x03(\v2\x14.simulation.SimEventR\x06events\"\x88\x01\n" +
+	"\fSimAttribute\x12\x13\n" +
+	"\x02id\x18\x01 \x01(\x05H\x00R\x02id\x88\x01\x01\x12\f\n" +
 	"\x01x\x18\x02 \x01(\x01R\x01x\x12\f\n" +
 	"\x01y\x18\x03 \x01(\x01R\x01y\x12\f\n" +
 	"\x01z\x18\x04 \x01(\x01R\x01z\x12\x1c\n" +
 	"\tdirection\x18\x05 \x01(\x01R\tdirection\x12\x14\n" +
-	"\x05speed\x18\x06 \x01(\x01R\x05speed\"\xa3\x01\n" +
+	"\x05speed\x18\x06 \x01(\x01R\x05speedB\x05\n" +
+	"\x03_id\"\xa3\x01\n" +
 	"\bSimEvent\x12\x12\n" +
 	"\x04type\x18\x01 \x01(\tR\x04type\x122\n" +
 	"\x04args\x18\x02 \x03(\v2\x1e.simulation.SimEvent.ArgsEntryR\x04args\x1aO\n" +
@@ -855,6 +859,8 @@ func file_simulation_simulation_proto_init() {
 	if File_simulation_simulation_proto != nil {
 		return
 	}
+	file_simulation_simulation_proto_msgTypes[1].OneofWrappers = []any{}
+	file_simulation_simulation_proto_msgTypes[6].OneofWrappers = []any{}
 	file_simulation_simulation_proto_msgTypes[8].OneofWrappers = []any{
 		(*MessageArg_IntValue)(nil),
 		(*MessageArg_DoubleValue)(nil),

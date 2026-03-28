@@ -46,7 +46,8 @@ message SimulationRequest {
 // SimObject はシミュレーション対象オブジェクトの初期状態です。
 message SimObject {
   // オブジェクトの識別子。
-  int32 id = 1;
+  // optional にすることで id=0 が「未設定」と区別され、JSON 出力時に省略されなくなります。
+  optional int32 id = 1;
 
   // 初期位置 x（エリアの x 軸方向）。
   double x = 2;
@@ -128,7 +129,8 @@ message SimItem {
 // SimAttribute は1ステップ後のオブジェクトの状態です。
 message SimAttribute {
   // オブジェクトの識別子。
-  int32 id = 1;
+  // optional にすることで id=0 が「未設定」と区別され、JSON 出力時に省略されなくなります。
+  optional int32 id = 1;
 
   // 更新後の位置 x。
   double x = 2;

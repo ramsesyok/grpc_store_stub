@@ -78,7 +78,7 @@ func generateRequest(f struct {
 	objs := make([]*simpb.SimObject, f.objects)
 	for i := range objs {
 		objs[i] = &simpb.SimObject{
-			Id: int32(i),
+			Id: func() *int32 { v := int32(i); return &v }(),
 			// x, y はエリア内のランダムな位置
 			X: rng.Float64() * f.width,
 			Y: rng.Float64() * f.height,

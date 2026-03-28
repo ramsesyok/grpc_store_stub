@@ -80,7 +80,7 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 		attrs := make([]*simpb.SimAttribute, 0, len(states))
 		for _, st := range states {
 			attrs = append(attrs, &simpb.SimAttribute{
-				Id:        st.id,
+				Id:        &st.id,
 				X:         st.x,
 				Y:         st.y,
 				Z:         st.z, // 変化なし（パススルー）
