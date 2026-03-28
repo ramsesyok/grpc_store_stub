@@ -25,8 +25,8 @@ var genFlags struct {
 	rangeEnd   float64
 	// interval: シミュレーションの計算間隔（秒）。実時間ではなくシミュレーション上の時間
 	interval float64
-	// bulkSize: 1 チャンクあたりの送信アイテム数
-	bulkSize int
+	// bulkInterval: 1 チャンクあたりのシミュレーション時間の長さ（秒）
+	bulkInterval float64
 	// wait: チャンク送信間のスリープ時間（秒）。送信レートが高すぎる場合に調整する
 	wait float64
 }
@@ -52,7 +52,7 @@ func init() {
 	genCmd.Flags().Float64Var(&genFlags.rangeStart, "range-start", 0.0, "シミュレーション開始時刻（秒）")
 	genCmd.Flags().Float64Var(&genFlags.rangeEnd, "range-end", 1000.0, "シミュレーション終了時刻（秒）")
 	genCmd.Flags().Float64VarP(&genFlags.interval, "interval", "t", 1.0, "シミュレーションの計算間隔（秒）")
-	genCmd.Flags().IntVarP(&genFlags.bulkSize, "bulk-size", "b", 100, "1 チャンクあたりの送信アイテム数")
+	genCmd.Flags().Float64VarP(&genFlags.bulkInterval, "bulk-interval", "b", 100.0, "1 チャンクあたりのシミュレーション時間の長さ（秒）")
 	genCmd.Flags().Float64VarP(&genFlags.wait, "wait", "w", 0.5, "チャンク送信間のスリープ時間（秒）")
 
 	rootCmd.AddCommand(genCmd)
@@ -61,15 +61,15 @@ func init() {
 // generateRequest はフラグ値をもとにシミュレーション用リクエストを生成し、
 // JSON ファイルへ書き出します。
 func generateRequest(f struct {
-	output     string
-	objects    int
-	width      float64
-	height     float64
-	rangeStart float64
-	rangeEnd   float64
-	interval   float64
-	bulkSize   int
-	wait       float64
+	output       string
+	objects      int
+	width        float64
+	height       float64
+	rangeStart   float64
+	rangeEnd     float64
+	interval     float64
+	bulkInterval float64
+	wait         float64
 }) error {
 	// 乱数源を現在時刻で初期化する（実行ごとに異なる配置を生成する）
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -99,14 +99,14 @@ func generateRequest(f struct {
 			XMin: 0, XMax: f.width,
 			YMin: 0, YMax: f.height,
 		},
-		Range:    &simpb.Range{Start: f.rangeStart, End: f.rangeEnd},
-		Interval: f.interval,
-		BulkSize: int32(f.bulkSize),
-		Wait:     f.wait,
+		Range:        &simpb.Range{Start: f.rangeStart, End: f.rangeEnd},
+		Interval:     f.interval,
+		BulkInterval: f.bulkInterval,
+		Wait:         f.wait,
 	}
 
 	// protojson でインデント付き JSON へシリアライズする
-	// フィールド名は proto の命名規則に従い camelCase で出力される（例: bulkSize）
+	// フィールド名は proto の命名規則に従い camelCase で出力される（例: bulkInterval）
 	data, err := protojson.MarshalOptions{Multiline: true, Indent: "  "}.Marshal(req)
 	if err != nil {
 		return err
