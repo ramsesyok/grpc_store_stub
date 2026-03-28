@@ -76,7 +76,9 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 	// t はシミュレーション上の現在時刻（秒）。interval ずつ進める
 	for t := start; t < end; t += interval {
 		// 演算層の step() で全オブジェクトを1ステップ分進める
-		step(states, area, interval)
+		// simTime にステップ終了時刻を渡し、反射イベントを受け取る
+		stepTime := t + interval
+		reflections := step(states, area, interval, stepTime)
 
 		// 更新後の objectState スライスを proto の SimAttribute スライスへ変換する
 		attrs := make([]*simpb.SimAttribute, 0, len(states))
@@ -91,13 +93,27 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			})
 		}
 
+		// 反射イベントを proto の SimEvent スライスへ変換する
+		// args の値型は MessageArg の oneof で表現する
+		simEvents := make([]*simpb.SimEvent, 0, len(reflections))
+		for _, r := range reflections {
+			simEvents = append(simEvents, &simpb.SimEvent{
+				Type: "m0001",
+				Args: map[string]*simpb.MessageArg{
+					"id": {Kind: &simpb.MessageArg_IntValue{IntValue: int64(r.objectID)}},
+					"x":  {Kind: &simpb.MessageArg_DoubleValue{DoubleValue: r.x}},
+					"y":  {Kind: &simpb.MessageArg_DoubleValue{DoubleValue: r.y}},
+					"t":  {Kind: &simpb.MessageArg_StringValue{StringValue: formatSimTime(r.simTime)}},
+				},
+			})
+		}
+
 		// このステップの結果を SimItem としてバッファへ追加
 		// Timestamp はステップ終了時刻（t + interval）とする
-		// Events は現時点では空リストで送信する
 		items = append(items, &simpb.SimItem{
-			Timestamp:  t + interval,
+			Timestamp:  stepTime,
 			Attributes: attrs,
-			Events:     []*simpb.SimEvent{},
+			Events:     simEvents,
 		})
 
 		// ステップ終了時刻が chunkEnd に達したらストリームへ送信する
