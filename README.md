@@ -73,7 +73,7 @@ make tidy
 
 # 3. サーバー・クライアントをビルドする
 make build
-# → bin/server, bin/client が生成される
+# → bin/stub-server, bin/support-client が生成される
 ```
 
 ## 使い方
@@ -83,7 +83,7 @@ make build
 ```bash
 make run-server
 # または
-./bin/server
+./bin/stub-server
 # → 2024/xx/xx server listening on :50051
 ```
 
@@ -93,7 +93,7 @@ make run-server
 オブジェクトの初期位置はエリア内でランダムに配置されます。
 
 ```bash
-./bin/client gen [flags]
+./bin/support-client gen [flags]
 ```
 
 | フラグ | 短縮 | デフォルト | 説明 |
@@ -110,7 +110,7 @@ make run-server
 
 ```bash
 # 例: オブジェクト 10 個、エリア 200x150 で生成
-./bin/client gen -n 10 -W 200 -H 150 -o request.json
+./bin/support-client gen -n 10 -W 200 -H 150 -o request.json
 ```
 
 ### クライアント: シミュレーションの実行 (`run`)
@@ -118,7 +118,7 @@ make run-server
 JSON ファイルをリクエストとしてサーバーへ送信し、ストリームを受信します。
 
 ```bash
-./bin/client run [flags]
+./bin/support-client run [flags]
 ```
 
 | フラグ | 短縮 | デフォルト | 説明 |
@@ -128,21 +128,21 @@ JSON ファイルをリクエストとしてサーバーへ送信し、ストリ
 
 ```bash
 # 例: 生成したファイルを使ってシミュレーション実行
-./bin/client run -i request.json
+./bin/support-client run -i request.json
 
 # 例: 別ホストのサーバーへ接続
-./bin/client run -i request.json -s 192.168.1.10:50051
+./bin/support-client run -i request.json -s 192.168.1.10:50051
 ```
 
 ### 実行例
 
 ```bash
 # ターミナル 1: サーバー起動
-./bin/server
+./bin/stub-server
 
 # ターミナル 2: リクエスト生成 → 実行
-./bin/client gen -n 5 -W 300 -H 200 --range-end 5000 --bulk-size 200 -o req.json
-./bin/client run -i req.json
+./bin/support-client gen -n 5 -W 300 -H 200 --range-end 5000 --bulk-size 200 -o req.json
+./bin/support-client run -i req.json
 
 # 出力例:
 # 2024/xx/xx [chunk 1] itemCount=200 range=[0.00, 200.00] isFinal=false
@@ -155,7 +155,7 @@ JSON ファイルをリクエストとしてサーバーへ送信し、ストリ
 既存の `sample_request.json` もそのまま利用できます。
 
 ```bash
-./bin/client run -i sample_request.json
+./bin/support-client run -i sample_request.json
 ```
 
 ## gRPC インタフェース
@@ -232,7 +232,7 @@ interval=0.5, bulk_interval=100 → 200 ステップで 1 チャンク (itemCoun
 |---|---|
 | `make proto` | proto から Go コードを生成 |
 | `make tidy` | `go mod tidy` を実行 |
-| `make build` | `bin/server`, `bin/client` をビルド |
+| `make build` | `bin/stub-server`, `bin/support-client` をビルド |
 | `make run-server` | サーバーを起動 |
 | `make run-client` | クライアントを実行（`request.json` を使用）|
 | `make clean` | `bin/` を削除 |
