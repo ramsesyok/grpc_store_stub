@@ -35,8 +35,9 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 		bulkInterval = interval
 	}
 
-	// waitDur: 各チャンク送信後に挿入するスリープ時間
-	// 演算が軽すぎて送信が高速になりすぎる場合に速度を調整する目的で使用する
+	// waitDur: 1ステップあたりの目標処理時間
+	// step() の実行時間がこれより短い場合は残り時間をスリープして速度を調整する
+	// interval=1.0 かつ wait=1.0 にすると実質リアルタイム処理となる
 	waitDur := time.Duration(float64(time.Second) * req.GetWait())
 
 	// proto の Area メッセージを演算層の simulationArea へ変換する
@@ -75,6 +76,9 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 
 	// t はシミュレーション上の現在時刻（秒）。interval ずつ進める
 	for t := start; t < end; t += interval {
+		// step() の前後を計測し、waitDur に満たない場合は残り時間をスリープする
+		stepStart := time.Now()
+
 		// 演算層の step() で全オブジェクトを1ステップ分進める
 		// simTime にステップ終了時刻を渡し、反射イベントを受け取る
 		stepTime := t + interval
@@ -116,6 +120,13 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			Events:     simEvents,
 		})
 
+		// step() の実行時間が waitDur に満たない場合は残り時間をスリープする
+		if waitDur > 0 {
+			if elapsed := time.Since(stepStart); elapsed < waitDur {
+				time.Sleep(waitDur - elapsed)
+			}
+		}
+
 		// ステップ終了時刻が chunkEnd に達したらストリームへ送信する
 		stepEnd := t + interval
 		if stepEnd >= chunkEnd {
@@ -128,10 +139,6 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			}
 			if err := stream.Send(resp); err != nil {
 				return err
-			}
-			// 送信レートを調整するためにスリープを挿入する（wait > 0 の場合のみ）
-			if waitDur > 0 {
-				time.Sleep(waitDur)
 			}
 			// 次チャンクの範囲へ更新してバッファをリセット
 			chunkStart = stepEnd
