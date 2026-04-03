@@ -2,24 +2,21 @@
     "objects": [
         {
             "id": 0,
-            "x": 10.0,
-            "y": 20.0,
-            "z": 30.0,
-            "direction": 45.0,
-            "speed": 5.0
+            "x": 42.089411289895665,
+            "y": 74.68002637007825,
+            "z": 78.50679017947793,
+            "direction": 62.05794902975305,
+            "speed": 5
         }
     ],
     "area": {
-        "x_min": 0.0,
-        "x_max": 100.0,
-        "y_min": 0.0,
-        "y_max": 100.0
+        "xMax": 100,
+        "yMax": 100
     },
     "range": {
-        "start": 0.1,
-        "end": 1000.1
+        "end": 1000
     },
-    "interval": 1.0,
-    "bulkSize": 100,
+    "interval": 1,
+    "bulkInterval": 100,
     "wait": 0.5
 }
