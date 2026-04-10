@@ -24,7 +24,8 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	SimulationService_RunSimulation_FullMethodName = "/simulation.SimulationService/RunSimulation"
+	SimulationService_RunSimulation_FullMethodName    = "/simulation.SimulationService/RunSimulation"
+	SimulationService_CancelSimulation_FullMethodName = "/simulation.SimulationService/CancelSimulation"
 )
 
 // SimulationServiceClient is the client API for SimulationService service.
@@ -37,6 +38,8 @@ type SimulationServiceClient interface {
 	// bulk_size ステップごとにチャンクをストリーム送信し、
 	// 最後のチャンクで is_final = true を設定してストリームを終了します。
 	RunSimulation(ctx context.Context, in *SimulationRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SimulationResponse], error)
+	// CancelSimulation は実行中のジョブをキャンセルします。
+	CancelSimulation(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*CancelResponse, error)
 }
 
 type simulationServiceClient struct {
@@ -66,6 +69,16 @@ func (c *simulationServiceClient) RunSimulation(ctx context.Context, in *Simulat
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type SimulationService_RunSimulationClient = grpc.ServerStreamingClient[SimulationResponse]
 
+func (c *simulationServiceClient) CancelSimulation(ctx context.Context, in *CancelRequest, opts ...grpc.CallOption) (*CancelResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CancelResponse)
+	err := c.cc.Invoke(ctx, SimulationService_CancelSimulation_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // SimulationServiceServer is the server API for SimulationService service.
 // All implementations must embed UnimplementedSimulationServiceServer
 // for forward compatibility.
@@ -76,6 +89,8 @@ type SimulationServiceServer interface {
 	// bulk_size ステップごとにチャンクをストリーム送信し、
 	// 最後のチャンクで is_final = true を設定してストリームを終了します。
 	RunSimulation(*SimulationRequest, grpc.ServerStreamingServer[SimulationResponse]) error
+	// CancelSimulation は実行中のジョブをキャンセルします。
+	CancelSimulation(context.Context, *CancelRequest) (*CancelResponse, error)
 	mustEmbedUnimplementedSimulationServiceServer()
 }
 
@@ -88,6 +103,9 @@ type UnimplementedSimulationServiceServer struct{}
 
 func (UnimplementedSimulationServiceServer) RunSimulation(*SimulationRequest, grpc.ServerStreamingServer[SimulationResponse]) error {
 	return status.Error(codes.Unimplemented, "method RunSimulation not implemented")
+}
+func (UnimplementedSimulationServiceServer) CancelSimulation(context.Context, *CancelRequest) (*CancelResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CancelSimulation not implemented")
 }
 func (UnimplementedSimulationServiceServer) mustEmbedUnimplementedSimulationServiceServer() {}
 func (UnimplementedSimulationServiceServer) testEmbeddedByValue()                           {}
@@ -121,13 +139,36 @@ func _SimulationService_RunSimulation_Handler(srv interface{}, stream grpc.Serve
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type SimulationService_RunSimulationServer = grpc.ServerStreamingServer[SimulationResponse]
 
+func _SimulationService_CancelSimulation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CancelRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(SimulationServiceServer).CancelSimulation(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: SimulationService_CancelSimulation_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(SimulationServiceServer).CancelSimulation(ctx, req.(*CancelRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // SimulationService_ServiceDesc is the grpc.ServiceDesc for SimulationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var SimulationService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "simulation.SimulationService",
 	HandlerType: (*SimulationServiceServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "CancelSimulation",
+			Handler:    _SimulationService_CancelSimulation_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "RunSimulation",

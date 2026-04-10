@@ -5,6 +5,7 @@ package main
 import (
 	"log"
 	"net"
+	"os"
 
 	simpb "github.com/ramsesyok/grpc-store-stub/gen/simulation"
 	"google.golang.org/grpc"
@@ -17,8 +18,15 @@ func main() {
 	if err != nil {
 		log.Fatalf("failed to listen: %v", err)
 	}
+	serverID := os.Getenv("SERVER_ID")
+	if serverID == "" {
+		serverID = "unknown"
+	}
 	s := grpc.NewServer()
-	simpb.RegisterSimulationServiceServer(s, &simServer{})
+	simpb.RegisterSimulationServiceServer(s, &simServer{
+		jobs:     NewJobManager(),
+		serverID: serverID,
+	})
 	log.Println("server listening on :50051")
 	if err := s.Serve(lis); err != nil {
 		log.Fatalf("failed to serve: %v", err)
