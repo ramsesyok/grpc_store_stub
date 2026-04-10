@@ -267,6 +267,34 @@ interval=0.5, bulk_interval=100 → 200 ステップで 1 チャンク (itemCoun
 | `make proto` | proto から Go コードを生成 |
 | `make tidy` | `go mod tidy` を実行 |
 | `make build` | `bin/stub-server`, `bin/support-client` をビルド |
+| `make dist` | 配布用 ZIP アーカイブを生成（下記参照）|
 | `make run-server` | サーバーを起動 |
 | `make run-client` | クライアントを実行（`request.json` を使用）|
-| `make clean` | `bin/` を削除 |
+| `make clean` | `bin/`, `dist/` を削除 |
+
+### `make dist` — 配布用アーカイブの生成
+
+指定した OS・アーキテクチャ向けにクロスビルドし、バイナリを ZIP に固めます。
+
+```bash
+make dist [OS=<os>] [ARCH=<arch>] [VERSION=<version>]
+```
+
+| 変数 | デフォルト | 説明 |
+|---|---|---|
+| `OS` | `linux` | ターゲット OS（`linux` / `windows` / `darwin`）|
+| `ARCH` | `amd64` | ターゲットアーキテクチャ（`amd64` / `arm64` など）|
+| `VERSION` | `0.0.0` | バージョン文字列（ZIP ファイル名に使用）|
+
+生成される ZIP ファイルは `dist/grpc-store-stub-<VERSION>-<OS>-<ARCH>.zip` です。
+ZIP にはビルドされた `stub-server` と `support-client`（Windows の場合は `.exe` 付き）が含まれます。
+
+```bash
+# 例: Windows 向け v1.0.0 をビルド
+make dist OS=windows ARCH=amd64 VERSION=1.0.0
+# → dist/grpc-store-stub-1.0.0-windows-amd64.zip
+
+# 例: macOS (Apple Silicon) 向け
+make dist OS=darwin ARCH=arm64 VERSION=1.0.0
+# → dist/grpc-store-stub-1.0.0-darwin-arm64.zip
+```
