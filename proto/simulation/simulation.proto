@@ -42,6 +42,9 @@ message SimulationRequest {
   // 演算が軽く送信が高速になりすぎる場合に速度を調整するために使います。
   // 演算に十分な処理時間がかかる場合は 0 のまま運用します。
   double wait = 6;
+
+  // ジョブの識別子。CancelSimulation でキャンセルする際に使用します。
+  string job_id = 7;
 }
 
 // SimObject はシミュレーション対象オブジェクトの初期状態です。
@@ -112,6 +115,12 @@ message SimulationResponse {
   // これが最後のチャンクであるかどうかのフラグ。
   // true のとき、ストリームはこのチャンクで終了します。
   bool is_final = 4;
+
+  // ジョブの識別子。リクエストの job_id をそのまま返します。
+  string job_id = 5;
+
+  // サーバーの識別子。環境変数 SERVER_ID から取得した値です。
+  string server_id = 6;
 }
 
 // SimItem は1ステップぶんのシミュレーション結果です。
@@ -180,6 +189,21 @@ message MessageArg {
 }
 
 // ============================================================
+// キャンセル
+// ============================================================
+
+// CancelRequest はジョブのキャンセルリクエストです。
+message CancelRequest {
+  string job_id = 1;
+}
+
+// CancelResponse はジョブのキャンセル結果です。
+message CancelResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+// ============================================================
 // サービス
 // ============================================================
 
@@ -189,4 +213,7 @@ service SimulationService {
   // bulk_size ステップごとにチャンクをストリーム送信し、
   // 最後のチャンクで is_final = true を設定してストリームを終了します。
   rpc RunSimulation(SimulationRequest) returns (stream SimulationResponse);
+
+  // CancelSimulation は実行中のジョブをキャンセルします。
+  rpc CancelSimulation(CancelRequest) returns (CancelResponse);
 }

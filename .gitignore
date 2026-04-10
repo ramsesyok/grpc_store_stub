@@ -3,3 +3,5 @@ bin/server
 req.json
 res.ndjson
 dist
+bin/stub-server
+bin/support-client

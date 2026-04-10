@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"time"
 
 	simpb "github.com/ramsesyok/grpc-store-stub/gen/simulation"
@@ -14,6 +15,8 @@ import (
 // 将来 RPC が追加された場合もコンパイルエラーを防ぎます。
 type simServer struct {
 	simpb.UnimplementedSimulationServiceServer
+	jobs     *JobManager
+	serverID string
 }
 
 // RunSimulation は SimulationService の server streaming RPC 実装です。
@@ -21,6 +24,9 @@ type simServer struct {
 // bulkInterval シミュレーション秒ごとにまとめてクライアントへストリーム送信します。
 // 最後のチャンクでは IsFinal = true を設定します。
 func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.SimulationService_RunSimulationServer) error {
+	jobID := req.GetJobId()
+	s.jobs.Register(jobID)
+	defer s.jobs.Unregister(jobID)
 	// interval: シミュレーションの1ステップあたりの時間（秒）
 	// 0 以下の場合はデフォルト 1.0 秒とする
 	interval := req.GetInterval()
@@ -127,6 +133,19 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			}
 		}
 
+		// キャンセルされていた場合、現在のバッファを IsFinal=true で送信して終了する
+		if s.jobs.IsCancelled(jobID) {
+			resp := &simpb.SimulationResponse{
+				Items:     items,
+				ItemCount: int32(len(items)),
+				Range:     &simpb.Range{Start: chunkStart, End: stepTime},
+				IsFinal:   true,
+				JobId:     jobID,
+				ServerId:  s.serverID,
+			}
+			return stream.Send(resp)
+		}
+
 		// ステップ終了時刻が chunkEnd に達したらストリームへ送信する
 		stepEnd := t + interval
 		if stepEnd >= chunkEnd {
@@ -136,6 +155,8 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 				ItemCount: int32(len(items)),
 				Range:     &simpb.Range{Start: chunkStart, End: stepEnd},
 				IsFinal:   isFinal,
+				JobId:     jobID,
+				ServerId:  s.serverID,
 			}
 			if err := stream.Send(resp); err != nil {
 				return err
@@ -158,6 +179,8 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 			ItemCount: int32(len(items)),
 			Range:     &simpb.Range{Start: chunkStart, End: end},
 			IsFinal:   true,
+			JobId:     jobID,
+			ServerId:  s.serverID,
 		}
 		if err := stream.Send(resp); err != nil {
 			return err
@@ -165,4 +188,13 @@ func (s *simServer) RunSimulation(req *simpb.SimulationRequest, stream simpb.Sim
 	}
 
 	return nil
+}
+
+// CancelSimulation は指定されたジョブをキャンセルします。
+func (s *simServer) CancelSimulation(_ context.Context, req *simpb.CancelRequest) (*simpb.CancelResponse, error) {
+	ok := s.jobs.Cancel(req.GetJobId())
+	if ok {
+		return &simpb.CancelResponse{Success: true, Message: "cancelled"}, nil
+	}
+	return &simpb.CancelResponse{Success: false, Message: "job not found"}, nil
 }

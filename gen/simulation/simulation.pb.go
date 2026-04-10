@@ -50,7 +50,9 @@ type SimulationRequest struct {
 	// チャンク送信間のスリープ時間（秒）。
 	// 演算が軽く送信が高速になりすぎる場合に速度を調整するために使います。
 	// 演算に十分な処理時間がかかる場合は 0 のまま運用します。
-	Wait          float64 `protobuf:"fixed64,6,opt,name=wait,proto3" json:"wait,omitempty"`
+	Wait float64 `protobuf:"fixed64,6,opt,name=wait,proto3" json:"wait,omitempty"`
+	// ジョブの識別子。CancelSimulation でキャンセルする際に使用します。
+	JobId         string `protobuf:"bytes,7,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -125,6 +127,13 @@ func (x *SimulationRequest) GetWait() float64 {
 		return x.Wait
 	}
 	return 0
+}
+
+func (x *SimulationRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
 }
 
 // SimObject はシミュレーション対象オブジェクトの初期状態です。
@@ -362,7 +371,11 @@ type SimulationResponse struct {
 	Range *Range `protobuf:"bytes,3,opt,name=range,proto3" json:"range,omitempty"`
 	// これが最後のチャンクであるかどうかのフラグ。
 	// true のとき、ストリームはこのチャンクで終了します。
-	IsFinal       bool `protobuf:"varint,4,opt,name=is_final,json=isFinal,proto3" json:"is_final,omitempty"`
+	IsFinal bool `protobuf:"varint,4,opt,name=is_final,json=isFinal,proto3" json:"is_final,omitempty"`
+	// ジョブの識別子。リクエストの job_id をそのまま返します。
+	JobId string `protobuf:"bytes,5,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	// サーバーの識別子。環境変数 SERVER_ID から取得した値です。
+	ServerId      string `protobuf:"bytes,6,opt,name=server_id,json=serverId,proto3" json:"server_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -423,6 +436,20 @@ func (x *SimulationResponse) GetIsFinal() bool {
 		return x.IsFinal
 	}
 	return false
+}
+
+func (x *SimulationResponse) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+func (x *SimulationResponse) GetServerId() string {
+	if x != nil {
+		return x.ServerId
+	}
+	return ""
 }
 
 // SimItem は1ステップぶんのシミュレーション結果です。
@@ -747,19 +774,118 @@ func (*MessageArg_DoubleValue) isMessageArg_Kind() {}
 
 func (*MessageArg_StringValue) isMessageArg_Kind() {}
 
+// CancelRequest はジョブのキャンセルリクエストです。
+type CancelRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	JobId         string                 `protobuf:"bytes,1,opt,name=job_id,json=jobId,proto3" json:"job_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelRequest) Reset() {
+	*x = CancelRequest{}
+	mi := &file_simulation_simulation_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelRequest) ProtoMessage() {}
+
+func (x *CancelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_simulation_simulation_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelRequest.ProtoReflect.Descriptor instead.
+func (*CancelRequest) Descriptor() ([]byte, []int) {
+	return file_simulation_simulation_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *CancelRequest) GetJobId() string {
+	if x != nil {
+		return x.JobId
+	}
+	return ""
+}
+
+// CancelResponse はジョブのキャンセル結果です。
+type CancelResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Success       bool                   `protobuf:"varint,1,opt,name=success,proto3" json:"success,omitempty"`
+	Message       string                 `protobuf:"bytes,2,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CancelResponse) Reset() {
+	*x = CancelResponse{}
+	mi := &file_simulation_simulation_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CancelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CancelResponse) ProtoMessage() {}
+
+func (x *CancelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_simulation_simulation_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CancelResponse.ProtoReflect.Descriptor instead.
+func (*CancelResponse) Descriptor() ([]byte, []int) {
+	return file_simulation_simulation_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *CancelResponse) GetSuccess() bool {
+	if x != nil {
+		return x.Success
+	}
+	return false
+}
+
+func (x *CancelResponse) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
 var File_simulation_simulation_proto protoreflect.FileDescriptor
 
 const file_simulation_simulation_proto_rawDesc = "" +
 	"\n" +
 	"\x1bsimulation/simulation.proto\x12\n" +
-	"simulation\"\xe8\x01\n" +
+	"simulation\"\xff\x01\n" +
 	"\x11SimulationRequest\x12/\n" +
 	"\aobjects\x18\x01 \x03(\v2\x15.simulation.SimObjectR\aobjects\x12$\n" +
 	"\x04area\x18\x02 \x01(\v2\x10.simulation.AreaR\x04area\x12'\n" +
 	"\x05range\x18\x03 \x01(\v2\x11.simulation.RangeR\x05range\x12\x1a\n" +
 	"\binterval\x18\x04 \x01(\x01R\binterval\x12#\n" +
 	"\rbulk_interval\x18\x05 \x01(\x01R\fbulkInterval\x12\x12\n" +
-	"\x04wait\x18\x06 \x01(\x01R\x04wait\"\x85\x01\n" +
+	"\x04wait\x18\x06 \x01(\x01R\x04wait\x12\x15\n" +
+	"\x06job_id\x18\a \x01(\tR\x05jobId\"\x85\x01\n" +
 	"\tSimObject\x12\x13\n" +
 	"\x02id\x18\x01 \x01(\x05H\x00R\x02id\x88\x01\x01\x12\f\n" +
 	"\x01x\x18\x02 \x01(\x01R\x01x\x12\f\n" +
@@ -775,13 +901,15 @@ const file_simulation_simulation_proto_rawDesc = "" +
 	"\x05y_max\x18\x04 \x01(\x01R\x04yMax\"/\n" +
 	"\x05Range\x12\x14\n" +
 	"\x05start\x18\x01 \x01(\x01R\x05start\x12\x10\n" +
-	"\x03end\x18\x02 \x01(\x01R\x03end\"\xa2\x01\n" +
+	"\x03end\x18\x02 \x01(\x01R\x03end\"\xd6\x01\n" +
 	"\x12SimulationResponse\x12)\n" +
 	"\x05items\x18\x01 \x03(\v2\x13.simulation.SimItemR\x05items\x12\x1d\n" +
 	"\n" +
 	"item_count\x18\x02 \x01(\x05R\titemCount\x12'\n" +
 	"\x05range\x18\x03 \x01(\v2\x11.simulation.RangeR\x05range\x12\x19\n" +
-	"\bis_final\x18\x04 \x01(\bR\aisFinal\"\x8f\x01\n" +
+	"\bis_final\x18\x04 \x01(\bR\aisFinal\x12\x15\n" +
+	"\x06job_id\x18\x05 \x01(\tR\x05jobId\x12\x1b\n" +
+	"\tserver_id\x18\x06 \x01(\tR\bserverId\"\x8f\x01\n" +
 	"\aSimItem\x12\x1c\n" +
 	"\ttimestamp\x18\x01 \x01(\x01R\ttimestamp\x128\n" +
 	"\n" +
@@ -807,9 +935,15 @@ const file_simulation_simulation_proto_rawDesc = "" +
 	"\tint_value\x18\x01 \x01(\x03H\x00R\bintValue\x12#\n" +
 	"\fdouble_value\x18\x02 \x01(\x01H\x00R\vdoubleValue\x12#\n" +
 	"\fstring_value\x18\x03 \x01(\tH\x00R\vstringValueB\x06\n" +
-	"\x04kind2e\n" +
+	"\x04kind\"&\n" +
+	"\rCancelRequest\x12\x15\n" +
+	"\x06job_id\x18\x01 \x01(\tR\x05jobId\"D\n" +
+	"\x0eCancelResponse\x12\x18\n" +
+	"\asuccess\x18\x01 \x01(\bR\asuccess\x12\x18\n" +
+	"\amessage\x18\x02 \x01(\tR\amessage2\xb0\x01\n" +
 	"\x11SimulationService\x12P\n" +
-	"\rRunSimulation\x12\x1d.simulation.SimulationRequest\x1a\x1e.simulation.SimulationResponse0\x01B5Z3github.com/ramsesyok/grpc-store-stub/gen/simulationb\x06proto3"
+	"\rRunSimulation\x12\x1d.simulation.SimulationRequest\x1a\x1e.simulation.SimulationResponse0\x01\x12I\n" +
+	"\x10CancelSimulation\x12\x19.simulation.CancelRequest\x1a\x1a.simulation.CancelResponseB5Z3github.com/ramsesyok/grpc-store-stub/gen/simulationb\x06proto3"
 
 var (
 	file_simulation_simulation_proto_rawDescOnce sync.Once
@@ -823,7 +957,7 @@ func file_simulation_simulation_proto_rawDescGZIP() []byte {
 	return file_simulation_simulation_proto_rawDescData
 }
 
-var file_simulation_simulation_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_simulation_simulation_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_simulation_simulation_proto_goTypes = []any{
 	(*SimulationRequest)(nil),  // 0: simulation.SimulationRequest
 	(*SimObject)(nil),          // 1: simulation.SimObject
@@ -834,7 +968,9 @@ var file_simulation_simulation_proto_goTypes = []any{
 	(*SimAttribute)(nil),       // 6: simulation.SimAttribute
 	(*SimEvent)(nil),           // 7: simulation.SimEvent
 	(*MessageArg)(nil),         // 8: simulation.MessageArg
-	nil,                        // 9: simulation.SimEvent.ArgsEntry
+	(*CancelRequest)(nil),      // 9: simulation.CancelRequest
+	(*CancelResponse)(nil),     // 10: simulation.CancelResponse
+	nil,                        // 11: simulation.SimEvent.ArgsEntry
 }
 var file_simulation_simulation_proto_depIdxs = []int32{
 	1,  // 0: simulation.SimulationRequest.objects:type_name -> simulation.SimObject
@@ -844,12 +980,14 @@ var file_simulation_simulation_proto_depIdxs = []int32{
 	3,  // 4: simulation.SimulationResponse.range:type_name -> simulation.Range
 	6,  // 5: simulation.SimItem.attributes:type_name -> simulation.SimAttribute
 	7,  // 6: simulation.SimItem.events:type_name -> simulation.SimEvent
-	9,  // 7: simulation.SimEvent.args:type_name -> simulation.SimEvent.ArgsEntry
+	11, // 7: simulation.SimEvent.args:type_name -> simulation.SimEvent.ArgsEntry
 	8,  // 8: simulation.SimEvent.ArgsEntry.value:type_name -> simulation.MessageArg
 	0,  // 9: simulation.SimulationService.RunSimulation:input_type -> simulation.SimulationRequest
-	4,  // 10: simulation.SimulationService.RunSimulation:output_type -> simulation.SimulationResponse
-	10, // [10:11] is the sub-list for method output_type
-	9,  // [9:10] is the sub-list for method input_type
+	9,  // 10: simulation.SimulationService.CancelSimulation:input_type -> simulation.CancelRequest
+	4,  // 11: simulation.SimulationService.RunSimulation:output_type -> simulation.SimulationResponse
+	10, // 12: simulation.SimulationService.CancelSimulation:output_type -> simulation.CancelResponse
+	11, // [11:13] is the sub-list for method output_type
+	9,  // [9:11] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -873,7 +1011,7 @@ func file_simulation_simulation_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_simulation_simulation_proto_rawDesc), len(file_simulation_simulation_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

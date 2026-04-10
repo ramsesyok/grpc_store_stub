@@ -34,7 +34,8 @@ grpc-store-stub/
 │       └── simulation_grpc.pb.go  # protoc 生成コード（サービス）
 ├── server/
 │   ├── main.go                    # サーバー起動
-│   ├── server.go                  # RunSimulation RPC 実装（gRPC 層）
+│   ├── server.go                  # RPC 実装（gRPC 層）
+│   ├── job_manager.go             # ジョブキャンセル管理
 │   └── simulation.go              # シミュレーション演算ロジック
 ├── client/
 │   ├── main.go                    # エントリポイント・サブコマンド振り分け
@@ -107,6 +108,7 @@ make run-server
 | `--interval` | `-t` | `1.0` | 計算間隔（秒）|
 | `--bulk-interval` | `-b` | `100` | 1 チャンクあたりのシミュレーション時間の長さ（秒）|
 | `--wait` | `-w` | `0.5` | チャンク間のスリープ時間（秒）|
+| `--job-id` | | `jobId` | ジョブの識別子（キャンセル時に使用）|
 
 ```bash
 # 例: オブジェクト 10 個、エリア 200x150 で生成
@@ -165,6 +167,7 @@ JSON ファイルをリクエストとしてサーバーへ送信し、ストリ
 ```protobuf
 service SimulationService {
   rpc RunSimulation(SimulationRequest) returns (stream SimulationResponse);
+  rpc CancelSimulation(CancelRequest) returns (CancelResponse);
 }
 ```
 
@@ -178,6 +181,7 @@ service SimulationService {
 | `interval` | `double` | 計算間隔（秒）。実時間ではなくシミュレーション上の時間 |
 | `bulk_interval` | `double` | 1 チャンクあたりのシミュレーション時間の長さ（秒）|
 | `wait` | `double` | チャンク送信間のスリープ時間（秒）|
+| `job_id` | `string` | ジョブの識別子。`CancelSimulation` でキャンセルする際に使用する |
 
 `SimObject` のフィールド: `id`, `x`, `y`, `z`, `direction`（度数法）, `speed`
 
@@ -189,8 +193,38 @@ service SimulationService {
 | `item_count` | `int32` | `items` の件数 |
 | `range` | `Range` | このチャンクが表す時間範囲 |
 | `is_final` | `bool` | 最終チャンクかどうか |
+| `job_id` | `string` | リクエストの `job_id` をそのまま返す |
+| `server_id` | `string` | レスポンスを返したサーバーの識別子（環境変数 `SERVER_ID`、未設定時は端末 IP:ポート）|
 
 `SimItem` のフィールド: `timestamp`, `attributes`（各オブジェクトの状態）, `events`（現時点は空）
+
+### キャンセル (`CancelSimulation`)
+
+実行中の `RunSimulation` ジョブをキャンセルします。
+キャンセルはチャンク送信のタイミング（ステップ単位）で検知されます。
+キャンセルが検知されると、その時点までのバッファを `is_final = true` で送信してストリームを終了します。
+
+#### リクエスト (`CancelRequest`)
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `job_id` | `string` | キャンセルするジョブの識別子 |
+
+#### レスポンス (`CancelResponse`)
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `success` | `bool` | キャンセルに成功した場合 `true`。ジョブが存在しない場合は `false` |
+| `message` | `string` | 結果メッセージ |
+
+#### サーバーの識別子 (`server_id`)
+
+サーバー起動時に環境変数 `SERVER_ID` を参照します。未設定の場合は `端末IPアドレス:50051` が自動設定されます。
+複数サーバーを並行稼働させる場合に `SERVER_ID` でどのサーバーが応答したかを識別できます。
+
+```bash
+SERVER_ID=server-1 ./bin/stub-server
+```
 
 ### `bulk_interval` と `interval` の関係
 
