@@ -29,6 +29,8 @@ var genFlags struct {
 	bulkInterval float64
 	// wait: チャンク送信間のスリープ時間（秒）。送信レートが高すぎる場合に調整する
 	wait float64
+	// jobId: ジョブの識別子
+	jobId string
 }
 
 // genCmd は「gen」サブコマンドの定義です。
@@ -54,6 +56,7 @@ func init() {
 	genCmd.Flags().Float64VarP(&genFlags.interval, "interval", "t", 1.0, "シミュレーションの計算間隔（秒）")
 	genCmd.Flags().Float64VarP(&genFlags.bulkInterval, "bulk-interval", "b", 100.0, "1 チャンクあたりのシミュレーション時間の長さ（秒）")
 	genCmd.Flags().Float64VarP(&genFlags.wait, "wait", "w", 0.5, "チャンク送信間のスリープ時間（秒）")
+	genCmd.Flags().StringVar(&genFlags.jobId, "job-id", "jobId", "ジョブの識別子")
 
 	rootCmd.AddCommand(genCmd)
 }
@@ -70,6 +73,7 @@ func generateRequest(f struct {
 	interval     float64
 	bulkInterval float64
 	wait         float64
+	jobId        string
 }) error {
 	// 乱数源を現在時刻で初期化する（実行ごとに異なる配置を生成する）
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
@@ -103,6 +107,7 @@ func generateRequest(f struct {
 		Interval:     f.interval,
 		BulkInterval: f.bulkInterval,
 		Wait:         f.wait,
+		JobId:        f.jobId,
 	}
 
 	// protojson でインデント付き JSON へシリアライズする
